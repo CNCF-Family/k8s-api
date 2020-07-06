@@ -1,0 +1,74 @@
+kind: pipeline
+type: docker
+name: check-pod-health
+
+steps:
+- name: build
+  image: plugins/docker
+  pull: if-not-exists
+  settings:
+    username: 
+      from_secret: epet_docker_username
+    password: 
+      from_secret: epet_docker_password
+    repo: registry-vpc.cn-hangzhou.aliyuncs.com/epet/${DRONE_REPO_NAME}
+    registry: registry-vpc.cn-hangzhou.aliyuncs.com
+    tag: ${DRONE_COMMIT_BRANCH}-${DRONE_COMMIT_SHA:0:8}
+
+- name: synchronization
+  image: appleboy/drone-scp
+  pull: if-not-exists
+  settings:
+    host: 172.16.xx.xx
+    port: 
+      from_secret: k8s_ssh_port
+    user: 
+      from_secret: k8s_ssh_username
+    key:
+      from_secret: k8s_ssh_222key
+    secure: true
+    target: /www/shell
+    source: ./${DRONE_REPO_NAME}.yaml
+
+- name: deploy
+  image: appleboy/drone-ssh
+  pull: if-not-exists
+  settings:
+    host: 172.16.xx.xx
+    port: 
+      from_secret: k8s_ssh_port
+    user: 
+      from_secret: k8s_ssh_username
+    key:
+      from_secret: k8s_ssh_222key
+    script: |
+            docker stop $(docker ps -a | grep ${DRONE_REPO_NAME} | awk '{print $1 }')
+            docker ps -a | grep  ${DRONE_REPO_NAME} | awk '{print $1 }' | xargs docker rm
+            docker images | grep ${DRONE_REPO_NAME} | awk '{print $3 }' | xargs docker rmi
+            sed -i 's/imagetag/${DRONE_COMMIT_BRANCH}-${DRONE_COMMIT_SHA:0:8}/g' /www/shell/${DRONE_REPO_NAME}.yaml
+            docker-compose -f /www/shell/${DRONE_REPO_NAME}.yaml up -d --build
+
+- name: dingtalk
+  image: guoxudongdocker/drone-dingtalk
+  pull: if-not-exists
+  settings:
+    token: dddddddddddddddddddddddd
+    type: markdown
+    message_color: true
+    message_pic: true
+    sha_link: true
+    tips_title: product
+  when:
+    status: [failure, success]
+
+node:
+  runner: epet
+  ecs: jenkins
+
+trigger:
+  branch:
+    - master
+  event:
+    - push
+
+

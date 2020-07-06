@@ -1,0 +1,13 @@
+version: "3"
+services:
+  front-haiji-aliance-backend:
+    image: registry-vpc.cn-hangzhou.aliyuncs.com/epet/check-pod-health:imagetag
+    ports:
+      - "9999:9999"
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
