@@ -42,9 +42,6 @@ steps:
     key:
       from_secret: k8s_ssh_222key
     script: |
-            docker stop $(docker ps -a | grep ${DRONE_REPO_NAME} | awk '{print $1 }')
-            docker ps -a | grep  ${DRONE_REPO_NAME} | awk '{print $1 }' | xargs docker rm
-            docker images | grep ${DRONE_REPO_NAME} | awk '{print $3 }' | xargs docker rmi
             sed -i 's/imagetag/${DRONE_COMMIT_BRANCH}-${DRONE_COMMIT_SHA:0:8}/g' /www/shell/${DRONE_REPO_NAME}.yaml
             docker-compose -f /www/shell/${DRONE_REPO_NAME}.yaml up -d --build
 
